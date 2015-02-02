@@ -16,15 +16,14 @@
 
 	<lightshader id="ls_Spot" script="urn:xml3d:lightshader:directional">
 		<!-- <float3 name="attenuation">1 0.033333 1</float3> -->
-		<float3 name="intensity">4 4 4</float3>
+		<float3 name="intensity">1 1 1</float3>
 	</lightshader>
 
-	<shader id="Material" script="urn:xml3d:shader:diffuse">
+	<shader id="Material" script="urn:xml3d:shader:phong">
 		<float name="ambientIntensity">0.4</float>
-		<!-- <bool name="useVertexColor">1</bool> -->
-		<float3 name="diffuseColor">1 1 1</float3>
-		<float3 name="specularColor">0 0 0</float3>
-		<float name="shininess">0.0978473581213</float>
+		<float3 name="diffuseColor">0.6 0.6 0.6</float3>
+		<float3 name="specularColor">0.8 0.8 0.8</float3>
+		<float name="shininess">0.978473581213</float>
 	</shader>
 
 	<shader id="flat" script="urn:xml3d:shader:flat">
@@ -32,15 +31,15 @@
 	</shader>
 
 	<transform id="t_Camera" rotation="-0.641815 0.733700 0.223063 1.145952" scale="1 1 1" translation="3.184399 3.711076 2.405665"></transform>
-	<transform id="t_Grid" rotation="1 0.000000 0.000000 0.000000" scale="25.000000 25.000000 25.000000" translation="0 0 0"></transform>
+	<transform id="t_Grid" rotation="1 0.000000 0.000000 0.000000" scale="25 25 25" translation="0 0 0"></transform>
 
 	<!-- Load terrain data: -->
 	<data id="terrain_data" compute="dimensions = xflow.imagesize(heightmap)">
 		<data compute="elevation = xflow.elevation(heightmap)">
 			<texture name="heightmap">
-				<!-- <img src="resources/YukonHeightField2.png"> -->
+				<img src="resources/YukonHeightField2.png">
 				<!-- <img src="resources/singlespot.png"> -->
-				<img src="resources/singlespot-8.png">
+				<!-- <img src="resources/singlespot-8.png"> -->
 			</texture>
 		</data>
 	</data>
@@ -51,7 +50,7 @@
 	</data>
 
 	<!-- Transform Grid by elevation data: -->
-	<data id="surface"> <!-- compute="normal = xflow.vertexNormal(position, index)"> -->
+	<data id="surface" compute="normal = xflow.vertexNormal(position, index)">
 		<data id="displace" compute="position = xflow.morph(position, scale, elevation)">
 			<float3 name="scale" id="scale">0 0.4 0</float3>
 			<data src="#generatedGrid"></data>
@@ -64,22 +63,23 @@
 	<!-- Wave Shape Display: -->
 
 	<group shader="#Material" transform="#t_Grid">
-		<mesh type="tristrips">
+		<!-- <mesh type="tristrips"> -->
+		<mesh type="triangles">
 			<data src="#surface"></data>
-			<!-- <data>
-				<data src="#displace" filter="rename({color: normal, normal: normal})"></data>
+			<!-- <data filter="rename({color: normal, normal: normal})">
+				<data src="#surface"></data>
 				<bool name="useVertexColor">1</bool>
 			</data> -->
-			<data filter="rename({diffuseTexture: heightmap})">
+			<!-- <data filter="rename({diffuseTexture: heightmap})">
 				<data src="#surface"></data>
-			</data>
+			</data> -->
 		</mesh>
 		
-		<mesh type="lines" shader="#flat">
+		<!-- <mesh type="lines" shader="#flat">
 			<data compute="position = xflow.vizNormals(position, normal)" filter="keep(position)">
 				<data src="#surface"></data>
 			</data>
-		</mesh>
+		</mesh> -->
 		
 	</group>
 
