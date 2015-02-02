@@ -1,5 +1,105 @@
 
 
+Xflow.registerOperator("xflow.vertexNormal", {
+	outputs: [	{type: 'float3', name: 'normal', customAlloc: true} ],
+	params:  [  {type: 'float3', source: 'position' },
+				{type: 'int', source: 'index' } ],
+	alloc: function(sizes, position, index)
+	{
+		sizes['normal'] = (position.length/3);
+	},
+	evaluate: function(normal, position, index, info) {
+		var vl = position.length;
+		var il = index.length;
+		
+		// for each vertex i in VertexList v
+		for (var i=0; i < vl; i+=3) {
+			
+			// n ← Zero Vector
+			var n = [0, 0, 0];
+			
+			// for each triangle j that shares ith vertex {
+			for (var j=0; j < il; j+=3) {
+				if ((index[j  ] != i) && (index[j+1] != i) && (index[j+2] != i))
+					continue;
+				
+				// n ← n + Normalize(Normal(v, j))
+				var A = 3*index[j  ];
+				var B = 3*index[j+1];
+				var C = 3*index[j+2];
+				
+				var Ax = position[A  ];
+				var Ay = position[A+1];
+				var Az = position[A+2];
+
+				var Bx = position[B  ];
+				var By = position[B+1];
+				var Bz = position[B+2];
+
+				var Cx = position[C  ];
+				var Cy = position[C+1];
+				var Cz = position[C+2];
+				
+				var Ux = Bx - Ax;
+				var Uy = By - Ay;
+				var Uz = Bz - Az;
+				
+				var Vx = Cx - Ax;
+				var Vy = Cy - Ay;
+				var Vz = Cz - Az;
+				
+				var S = [
+					Uy*Vz - Uz*Vy,
+					Uz*Vx - Ux*Vz,
+					Ux*Vy - Uy*Vx
+				];
+				
+				// normalize
+				var l = Math.sqrt(S[0]*S[0]+S[1]*S[1]+S[2]*S[2]);
+				for (var k=0; k<3; k++) n[k] += S[k] / l;
+			}
+			
+			// v[i].n ← Normalize(n)
+			var l = Math.sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);
+			for (var k=0; k<3; k++) normal[k] = n[k] / l;
+		}
+		
+		// for(var i=0; i < info.iterateCount; i++) {
+			// normal[3*i  ] = 0;
+			// normal[3*i+1] = 1;
+			// normal[3*i+2] = 0;
+		// }
+		console.log(normal);
+	}
+});
+
+
+Xflow.registerOperator("xflow.vizNormals", {
+	outputs: [	{type: 'float3', name: 'position', customAlloc: true} ],
+	params:  [  {type: 'float3', source: 'position' },
+				{type: 'float3', source: 'normal' } ],
+	alloc: function(sizes, position, normal)
+	{
+		sizes['position'] = 2*(position.length/3);
+	},
+	evaluate: function(result, position, normal, info) {
+		// console.log(info);
+		// console.log(position);
+		// console.log(normal);
+		for(var i=0; i < info.iterateCount; i++) {
+			result[6*i  ] = position[3*i  ];
+			result[6*i+1] = position[3*i+1];
+			result[6*i+2] = position[3*i+2];
+
+			result[6*i+3] = position[3*i  ] + normal[3*i  ];
+			result[6*i+4] = position[3*i+1] + normal[3*i+1];
+			result[6*i+5] = position[3*i+2] + normal[3*i+2];
+		}
+		// console.log(result);
+	}
+});
+
+
 Xflow.registerOperator("xflow.imagesize", {
 	outputs: [	{type: 'int', name: 'size', customAlloc: true} ],
 	params:  [  {type: 'texture', source: 'image' } ],
@@ -54,8 +154,8 @@ Xflow.registerOperator("xflow.mygrid", {
         sizes['normal'] = s* t;
         sizes['texcoord'] = s* t;
 		// TODO: use triangle strips
-        // sizes['index'] = (s-1) * (t-1) * 6;
-        sizes['index'] = (s*t) + (s-1)*(t-2);
+        sizes['index'] = (s-1) * (t-1) * 6;
+        // sizes['index'] = (s*t) + (s-1)*(t-2);
     },
     evaluate: function(position, normal, texcoord, index, size) {
 		var s = size[0];
@@ -90,33 +190,33 @@ Xflow.registerOperator("xflow.mygrid", {
 		}
 
         // Create Indices for triangles
-		// var tl = (s-1) * (t-1);
-		// for(var i = 0; i < tl; i++) {
-			// var offset = i*6;
-			// var base = i + Math.floor(i / (s-1));
-			// index[offset+0] = base;
-			// index[offset+1] = base + 1;
-			// index[offset+2] = base + s;
-			// index[offset+4] = base + s;
-			// index[offset+3] = base + 1;
-			// index[offset+5] = base + s + 1;
-		// }
+		var tl = (s-1) * (t-1);
+		for(var i = 0; i < tl; i++) {
+			var offset = i*6;
+			var base = i + Math.floor(i / (s-1));
+			index[offset+0] = base;
+			index[offset+1] = base + 1;
+			index[offset+2] = base + s;
+			index[offset+4] = base + s;
+			index[offset+3] = base + 1;
+			index[offset+5] = base + s + 1;
+		}
 		
 		// Create Indices for trianglestrips
-		var i = 0
-		for (var row=0; row<t-1; row++) {
-			if ( (row%2)==0 ) { // even rows
-				for (var col=0; col<s; col++) {
-					index[i++] = col + row * s;
-					index[i++] = col + (row+1) * s;
-				}
-			} else { // odd rows
-				for (var col=s-1; col>0; col--) {
-					index[i++] = col + (row+1) * s;
-					index[i++] = col - 1 + + row * s;
-				}
-			}
-		}
+		// var i = 0
+		// for (var row=0; row<t-1; row++) {
+			// if ( (row%2)==0 ) { // even rows
+				// for (var col=0; col<s; col++) {
+					// index[i++] = col + row * s;
+					// index[i++] = col + (row+1) * s;
+				// }
+			// } else { // odd rows
+				// for (var col=s-1; col>0; col--) {
+					// index[i++] = col + (row+1) * s;
+					// index[i++] = col - 1 + + row * s;
+				// }
+			// }
+		// }
 	}
 });
 
