@@ -12,45 +12,50 @@
 	<title>Heightfield Examples</title>
 	<script type="text/javascript">
 	
-		var url = "http://130.206.81.238:8080/geoserver/w3ds"
-		var options = {
-			"version": "0.4",
-			"service": "w3ds",
-			"request": "GetScene",
-			"crs": "EPSG:3047",
-			"format": "application/octet-stream",
-			"layers": "fiware:pallas-terrain",
-			"boundingbox": "374000,7548000,375202,7549200",
-			"LOD": "4"
-		};
+		var url = "resources/north-finland.octet-stream"
+		// var url = "http://130.206.81.238:8080/geoserver/w3ds"
+		// var options = {
+		//	"version": "0.4",
+		//	"service": "w3ds",
+		//	"request": "GetScene",
+		//	"crs": "EPSG:3047",
+		//	"format": "application/octet-stream",
+		//	"layers": "fiware:pallas-terrain",
+		//	"boundingbox": "374000,7548000,375202,7549200",
+		//	"LOD": "4"
+		// };
 	
 		var handleOctetStream = function(data) {
-			console.log("handle");
-			console.log(data);
-			// console.log(data.length);
-			console.log(data.byteLength);
-			var data = new DataView(data), i, MAGICAL_DRAGON_OFFSET = 9, dataOffset = MAGICAL_DRAGON_OFFSET;
+			console.log("handle octet-stream");
+			var dv = new DataView(data), dataOffset = 0;
+			var L_INT32 = 4, L_FLOAT32 = 4;
 
-			console.log("1. value (big endian):", data.getInt32(dataOffset, false));
-			dataOffset += 4;
-			console.log("2. value (big endian):", data.getInt32(dataOffset, false));
-			dataOffset += 4;
-			console.log("3. value (big endian):", data.getFloat64(dataOffset, false));
-			dataOffset += 8;
-			console.log("4. value (big endian):", data.getFloat64(dataOffset, false));
-			dataOffset += 8;
+			var s = dv.getInt32(dataOffset, false);
+			dataOffset += L_INT32;
+			var t = dv.getInt32(dataOffset, false);
+			dataOffset += L_INT32;
+			
+			console.log("s:", s);
+			console.log("t:", t);
 
-			var a = [], offset, i, iterations = Math.floor((data.byteLength - dataOffset)/8);
-			for(offset=dataOffset, i=0; i < iterations; offset += 8, i++){
-			   a[i] = data.getFloat64(offset, false);
-			}
-			console.log(a);
-			console.log(new Float64Array(a));
-			//console.log("First two values:", new Int32Array(this.response, 0, 2));
-			//console.log("Next two values:", new Float64Array(this.response, 8, 2));
-			//console.log("Last values:", new Float64Array(this.response, 2*4 + 2*8 , (this.response.byteLength - (2*4 +2*8)) / 8))  
+			var ds = dv.getFloat32(dataOffset, false);
+			dataOffset += L_FLOAT32;
+			var dt = dv.getFloat32(dataOffset, false);
+			dataOffset += L_FLOAT32;
+			
+			console.log("avg dist in s:", ds);
+			console.log("avg dist in t:", dt);
 
-			console.log("<<<<<<<<<<<<<<Octet-Stream test output")
+			var c = new Float32Array(data, dataOffset);
+			
+			// convert big endian to host endianess
+			for (var i = 0; dataOffset < dv.byteLength; dataOffset += L_FLOAT32, i++) // {
+				c[i] = dv.getFloat32(dataOffset, false);
+
+			// console.log(c);
+
+			$("#gis_dimension").text(s + " " + t);
+			$("#gis_elevation")[0].setScriptValue(c);
 		};
 		
 		var onload = function () {
@@ -58,11 +63,10 @@
 			
 			$.ajax(url, {
 				type: "GET",
-				data: options,
+				// data: options,
 				dataType: "binary",
 				responseType: "arraybuffer"
-				// processData: false
-			}).done(handleOctetStream).always(function() {console.log("always");});
+			}).done(handleOctetStream);
 		};
 		
 		window.addEventListener("load", onload, false);
@@ -106,7 +110,7 @@
 	<!-- Transform Grid by elevation data: -->
 	<data id="surface" compute="normal = xflow.vertexNormal(position, index)">
 		<data id="displace" compute="position = xflow.morph(position, scale, elevation)">
-			<float3 name="scale" id="scale">0 0.4 0</float3>
+			<float3 name="scale" id="scale">0 0.0015 0</float3>
 			<data src="#generatedGrid"></data>
 		</data>
 	</data>
